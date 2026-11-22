@@ -36,8 +36,17 @@ const DMG = {
   bossRes: { lang: 1.0, yao: 1.0, zhen: 0.4, huan: 0.4 },
   bossImmune: { 1: ['yao'], 2: ['yao'] },            // 物理归属（爻）被免疫；火/量子我方无人走欢愉线；雷/冰/虚数不锁
   mobResSelf: { hui: 'yao', chi: null, cangyi: null },  // 小怪免疫自身属性：灰烬=物理→爻打灰烬 ×0
-  takenMobFF: 0.25,                                  // 坚不可摧（力场期）✅总账§1.11
-  takenMobRetreat: 1.3,                              // 失意「受到的伤害提高」🟡数值未测（小怪1轮死闭合需 ≥+19%，占位 1.3）
+  // ⚠️ 2026-11-22 校准推翻：原按「坚不可摧 −75%」给小怪 0.25，结果 P2 小怪要 4 轮才死、
+  //   逼着等 @127 退散 → P2 拖到 192（分数 3808）。但 P1 实测：灰烬在【力场期】(力场至 88) 1 轮强普即死（314.6万），
+  //   引擎同刻只算 83万/轮 → **欢愉伤害不吃坚不可摧的 −75%**（官方"欢愉伤可更快解除力场"的真义）。
+  //   欢愉 1.0 后 334万/轮 ≥ 314.6万 → 1 轮死 ✅ 与实测闭合，且不再需要虚构的"失意 1.3"兜底。
+  takenMobFF: 1.0,
+  takenMobRetreat: 1.3,                              // 失意「受到的伤害提高」🟡数值未测（不再承担"1轮死"兜底，仅作退散后加成）
+  // 保姆强普真伤（目标 HP 上限×%）：⚠️ 反解值，不是实测值。
+  //   依据：大人开自动 3883 → elapsed 117；本引擎 P1@89 已闭合，故 P2 仅用 28 AV 打空 2323 万。
+  //   引擎在 89~100 窗口只打出 1187 万（缺 1136 万），缺口恰为 P2 的 9 发保姆强普（4 杀白送＋5 实付）——
+  //   → 单发 ≈ 126 万 ≈ P2 HP 上限 5.4%。判别式：实机读一次保姆强普的伤害数字即钉死。
+  baomuTrue: 1260000,
   haohuoCap: 180,                                    // 好活乘区封顶（§5 口径 LP 120~180；2回合衰减🟡按封顶近似）
   strongBonusOn: false,                              // ⚠️校准疑点#1：§5 复算未乘强普档也闭合 24508 → 默认关；实机单段>33k 再开
 };
@@ -271,6 +280,16 @@ function makeHooks(step, policyObj) {
     if (stripped) s.strips = (s.strips || 0) + 1;
     const block = s.t < BARRIER ? '（力场锁，削韧无效）' : s.broken ? '（已破韧，削韧无意义）' : '';
     let msg = stripped ? `强普：剥减伤1层（剩${cap - s.strips}层）＋削韧${CFG.tough.baomuStrong}${block}` : `强普：无层可剥＋削韧${CFG.tough.baomuStrong}${block}`;
+    // ── 真伤结算（2026-11-22 补：此前引擎完全没算保姆强普伤害，是 P2 慢 64 AV 的唯一原因）──
+    if (step >= 3 && s.bossHP > 0) {
+      s.bossHP -= DMG.baomuTrue;
+      s.dmgDealt.boss += DMG.baomuTrue;
+      msg += `｜真伤 ${(DMG.baomuTrue / 1e4).toFixed(0)}万🟡`;
+      if (s.phase === 2 && s.bossHP <= 0 && s.killT === null) {
+        s.killT = s.t;
+        L(s, '★', `伤害账：P2 boss 击杀（理论 elapsed ${s.t.toFixed(1)}，保姆强普真伤补刀）`);
+      }
+    }
     if (!(s.t < BARRIER) && !s.broken) {
       s.tough -= CFG.tough.baomuStrong;
       if (s.tough <= 0) { s.tough = 0; s.broken = true; msg += ' → 破韧'; activateAll(s); }
@@ -352,10 +371,20 @@ function makeHooks(step, policyObj) {
           if (s.tough <= 0) { s.tough = 0; s.broken = true; activateAll(s); }
         }
         // ── 伤害账：100 段弹射 ×2.4%＝总倍率 240%，单体独吃（🟡分摊口径另测）──
-        //   瞄准策略：韧在期→打首个存活小怪（涨 16 计数促退散＋杀退散怪）；破韧后→全弹 boss（吃满受伤+100%）
+        //   瞄准策略（2026-11-22 二次校准：按"最少轮次换 4 杀"重写）：
+        //   ① 只要还有减伤层未剥完（strips<cap）→ 打**残血最少**的小怪（最快换击杀 → 免费强普 → 剥层/削韧）
+        //   ② 层剥完 或 小怪全死 → 全弹 boss（破韧后吃满 +100%；未破韧也打 boss，因为轮次有限不能浪费）
         if (step >= 3) {
           const alive = Object.keys(s.mobs).filter((k) => !s.mobs[k].dead);
-          const tgt = s.broken ? 'boss' : (alive[0] || 'boss');
+          const cap = s.phase === 1 ? 2 : 4;
+          let tgt;
+          if (s.phase === 2 && (s.strips || 0) < cap && alive.length) {
+            tgt = alive.reduce((a, b) => ((s.mobs[a].hp ?? 1e12) <= (s.mobs[b].hp ?? 1e12) ? a : b));
+          } else if (s.phase === 1 && alive.length && !s.broken) {
+            tgt = alive[0];
+          } else {
+            tgt = 'boss';
+          }
           const d = dealJoy(s, 'lang', 2.4, tgt, { strong: true });
           (s.strongRounds = s.strongRounds || []).push({ t: s.t, tgt, d: Math.round(d) });
           if (s.langUltLeft > 0) {
