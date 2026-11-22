@@ -42,11 +42,12 @@ const DMG = {
   //   欢愉 1.0 后 334万/轮 ≥ 314.6万 → 1 轮死 ✅ 与实测闭合，且不再需要虚构的"失意 1.3"兜底。
   takenMobFF: 1.0,
   takenMobRetreat: 1.3,                              // 失意「受到的伤害提高」🟡数值未测（不再承担"1轮死"兜底，仅作退散后加成）
-  // 保姆强普真伤（目标 HP 上限×%）：⚠️ 反解值，不是实测值。
-  //   依据：大人开自动 3883 → elapsed 117；本引擎 P1@89 已闭合，故 P2 仅用 28 AV 打空 2323 万。
-  //   引擎在 89~100 窗口只打出 1187 万（缺 1136 万），缺口恰为 P2 的 9 发保姆强普（4 杀白送＋5 实付）——
-  //   → 单发 ≈ 126 万 ≈ P2 HP 上限 5.4%。判别式：实机读一次保姆强普的伤害数字即钉死。
-  baomuTrue: 1260000,
+  // 保姆强普真伤（目标 HP 上限×%）：✅ 2026-11-22 实战逐帧读数钉死（旧的 126万反解值作废）。
+  //   实测单层系数 ×0.97（−3%/层）：P1 2层292887/1层302118/0层311349；P2 4层348443/1层361497/0层371754
+  //   0层真伤 = boss HP上限×1.6%（P1 311349/1935.8万=1.608%；P2 371754/2323万=1.600%，两例交叉验证）
+  //   ⚠️ 126万≈P2血×5.4% 是拿"9发补1136万缺口"反解，缺口前提是错的（P2 实际用 78 AV 磨完，非 28 AV 爆发）→ 作废
+  baomuTrue: { p1: 311349, p2: 371754 },   // 0层真伤基数，按 phase 取；结算时 ×0.97^抗菌剩余层
+  baomuLayerCoef: 0.97,
   haohuoCap: 180,                                    // 好活乘区封顶（§5 口径 LP 120~180；2回合衰减🟡按封顶近似）
   strongBonusOn: false,                              // ⚠️校准疑点#1：§5 复算未乘强普档也闭合 24508 → 默认关；实机单段>33k 再开
 };
@@ -63,7 +64,7 @@ const CFG = {
     boss:  { name: '帕姆王', spd: 172.4,  start: 1.0 },                     // 周期 58 ✅帧证；开怪首动@0（排队内）
     baomu: { name: '保姆',   spd: 144.9,  start: 0.3913 },                  // 周期 69 ✅帧证（42→111）；首动@42
     hui:   { name: '灰烬',   spd: 156.25, start: 0.40625 },                 // 周期 64 🟡（38→102）
-    chi:   { name: '赤焰',   spd: 156.25, start: -0.20313 },                // 周期 64 ✅帧证（二动@140）；首动@77 ✅双帧交叉
+    chi:   { name: '赤焰',   spd: 156.25, start: -0.20313, shieldBreak: 77 },// ⚠️2026-11-22实测修正：@77=次数盾被破、之后停动降到和灰烬同步（非普攻首动）;旧"二动@140"口径作废🟡
   },
   sp: { init: 3, max: 5 },
   hit: 12.4,            // 轻击群攻档 10×1.244（boss@58 AOE 部分）
@@ -84,6 +85,10 @@ const CFG = {
   th: { langQ: 60, langQCost: 136, langExtra: 120, yaoQ: 180, zhenQ: 180, huanQ: 160 },
   tough: { bossStart: 470, barrierUntil: 88, ahaStrike: 65, langAhaStrike: 10, langStrong: 50, baomuStrong: 100 },
   chargeNeed: 80,       // 保姆闪充：80 笑点 → 1 发强普（🟡 拟合：1 笑点 = 1 格）
+  // ⭐ P2 强普节奏重建（2026-11-22 实战反解）：充能强普不得堆同一格——按保姆自身行动节奏分散。
+  //   实战 P2 强化a 时点：89 / 127 / 165（间隔38AV）＋ 杀怪白送的立即额外回合（166 两发）。
+  //   旧模型 while(charge>=80) 全 push 到 s.t+1e-6 → 12发挤在 88.4 一格（分数虚高 3912）。
+  chargeGap: 38,        // 充能强普最小间隔 AV（反解：89→127→165 各 38）
 };
 
 const GREEDY = { yaoQ: 'early', langQ: 'now', zhenQ: 'now', huanQ: 'now' };  // 第 2 层专用（无机制约束下的贪心）
@@ -99,6 +104,7 @@ function initState(s) {
   s.langUltGain = 0;   // 无敌玩家期间累计新增隐藏分（2 魂额外回合按"保底1档 + 每再+120"判，见 B1）
   s.zhenUltLeft = 0;
   s.charge = 0;
+  s.lastStrongAt = -Infinity;   // 上一发【充能强普】时点（节流用；杀怪白送强普不更新，实测可同刻连发）
   s.strips = 0;
   // ── 伤害层状态（2026-11-22 接入）──
   s.bossHP = DMG.bossHP.p1;
@@ -119,15 +125,23 @@ function makeHooks(step, policyObj) {
 
   function eName(s, k) { return (s.ents[k] && s.ents[k].name) || (CFG.units[k] && CFG.units[k].name) || k; }
 
+  /** ⭐ P2 强普节奏重建：充能满格里，按 chargeGap 节流排强普——每发至少间隔 38 AV（实战 89/127/165）。
+   *   旧 while 全 push 到 s.t+1e-6 → 12发挤 88.4 一格。杀怪白送强普(baomuKillTurn)直接调 baomuStrong，不走这里。 */
+  function drainCharge(s) {
+    while ((s.charge || 0) >= CFG.chargeNeed) {
+      s.charge -= CFG.chargeNeed;
+      // 首发不强加 gap（t=s.t），之后每发至少间隔 chargeGap
+      const t = s.lastStrongAt === -Infinity ? s.t + 1e-6 : Math.max(s.t + 1e-6, s.lastStrongAt + CFG.chargeGap);
+      s.lastStrongAt = t;
+      s.inserts.push({ t, done: false, kind: 'baomuStrong', fn: () => baomuStrong(s) });
+    }
+  }
+
   function gainLaugh(s, n, why) {
     s.laugh += n;
     if (step >= 3) {
       s.charge = (s.charge || 0) + n;   // 保姆充能（第 3 层）
-      // +1e-6：同刻 FIFO 微推后——实测「点火 → 狼Q → 保姆强普」（2026-11-22），充能强普不得插队到狼Q 前
-      while ((s.charge || 0) >= CFG.chargeNeed) {
-        s.charge -= CFG.chargeNeed;
-        s.inserts.push({ t: s.t + 1e-6, done: false, fn: () => baomuStrong(s) });
-      }
+      drainCharge(s);   // 节流：强普按 38AV 分散，不堆同刻
     }
     s.hidden = Math.min(300, s.hidden + n);
     if (s.langUltLeft > 0) s.langUltGain = (s.langUltGain || 0) + n;  // 无敌玩家期间新增（2魂额外回合判定用）
@@ -143,12 +157,14 @@ function makeHooks(step, policyObj) {
     if (s.langUltLeft > 0) v *= 1.2;
     return v;
   }
-  /** boss 受伤修正（乘算）✅总账§1.11：韧在×0.9、坚防守备×0.5、抗菌×0.56^剩余层（P1=2/P2=4，剥完=×1）、破韧窗×2.0 */
+  /** boss 受伤修正（乘算）：韧在×0.9、坚防守备×0.5、抗菌×0.97^剩余层（P1=2/P2=4，剥完=×1）、破韧窗×2.0
+   *  2026-11-22 实战读数修正：抗菌单层 0.97（−3%），旧 0.56 严重高估减伤
+   *   ⚠️ 该系数由保姆强普读数反解（厨艺伤同源抗菌），欢愉伤是否完全同系数待独立读数🟡 */
   function takenBoss(s) {
     let z = 1;
     if (!s.broken) { z *= 0.9; z *= 0.5; }
     const cap = s.phase === 1 ? 2 : 4;
-    z *= Math.pow(0.56, Math.max(0, cap - s.strips));
+    z *= Math.pow(DMG.baomuLayerCoef, Math.max(0, cap - s.strips));
     if (s.broken) z *= 2.0;
     return z;
   }
@@ -257,17 +273,12 @@ function makeHooks(step, policyObj) {
         }
       }
     }
-    // 阿哈时刻结束：池转好活（狼强普笑点乘区用）＋**池计入保姆充能**（实测口径：充能=累计获得笑点，
-    //   极速闪充 tooltip=实时累计笑点计数器；引擎此前漏记池 → 强普全堆 88.4，2026-11-22 修）
+    // 阿哈时刻结束：池转好活（狼强普笑点乘区用）。
+    // ⭐2026-11-22 重建：池【不再】二次计入 charge——每笔笑点已在 gainLaugh 逐次累积进 charge，
+    //   这里再 += consumed 是双倍计数（P1 末 charge 爆到 960+ → 12发强普堆 88.4 的根因）。
+    //   池的去处 = 好活（haohuo），与保姆充能是两条账。
     const consumed = s.laugh + (fixed || 0);
     s.haohuo += consumed;
-    if (step >= 3) {
-      s.charge = (s.charge || 0) + consumed;
-      while ((s.charge || 0) >= CFG.chargeNeed) {
-        s.charge -= CFG.chargeNeed;
-        s.inserts.push({ t: s.t + 1e-6, done: false, fn: () => baomuStrong(s) });
-      }
-    }
     s.laugh = 0;
     gainLaugh(s, 4 * CFG.laugh.ahaGift, '阿哈结束赠送（4欢愉×1）');
   }
@@ -280,14 +291,17 @@ function makeHooks(step, policyObj) {
     if (stripped) s.strips = (s.strips || 0) + 1;
     const block = s.t < BARRIER ? '（力场锁，削韧无效）' : s.broken ? '（已破韧，削韧无意义）' : '';
     let msg = stripped ? `强普：剥减伤1层（剩${cap - s.strips}层）＋削韧${CFG.tough.baomuStrong}${block}` : `强普：无层可剥＋削韧${CFG.tough.baomuStrong}${block}`;
-    // ── 真伤结算（2026-11-22 补：此前引擎完全没算保姆强普伤害，是 P2 慢 64 AV 的唯一原因）──
+    // ── 真伤结算（2026-11-22 实战读数钉死：0层=HP×1.6%，按抗菌剩余层 ×0.97^n）──
     if (step >= 3 && s.bossHP > 0) {
-      s.bossHP -= DMG.baomuTrue;
-      s.dmgDealt.boss += DMG.baomuTrue;
-      msg += `｜真伤 ${(DMG.baomuTrue / 1e4).toFixed(0)}万🟡`;
+      const base = DMG.baomuTrue[s.phase === 1 ? 'p1' : 'p2'];
+      const layersLeft = Math.max(0, cap - s.strips);  // 本发剥层前剩余（P1实测2层292887=0层×0.97²）
+      const trueDmg = Math.round(base * Math.pow(DMG.baomuLayerCoef, layersLeft));
+      s.bossHP -= trueDmg;
+      s.dmgDealt.boss += trueDmg;
+      msg += `｜强普伤 ${trueDmg}（${s.phase} phase ${layersLeft}层抗菌）`;
       if (s.phase === 2 && s.bossHP <= 0 && s.killT === null) {
         s.killT = s.t;
-        L(s, '★', `伤害账：P2 boss 击杀（理论 elapsed ${s.t.toFixed(1)}，保姆强普真伤补刀）`);
+        L(s, '★', `伤害账：P2 boss 击杀（理论 elapsed ${s.t.toFixed(1)}，保姆强普补刀）`);
       }
     }
     if (!(s.t < BARRIER) && !s.broken) {
@@ -307,11 +321,13 @@ function makeHooks(step, policyObj) {
   }
 
   /** 击杀破晓成员 → 保姆立即获得 1 个可施放强化普攻的额外回合（官方首领特性原文） */
+  /** 击杀破晓成员 → 保姆白送 1 发强普。⭐2026-11-22 重建：白送强普也纳入 38AV 节流队列
+   *   （旧版 s.t+1e-5 立即打 → 4 小怪同刻死时 4 发全堆 89，伤害虚高；实战白送强普分散 89/127/165）。
+   *   实现：直接借 charge 队列计数——加一个虚拟充能格并 drain，复用节流锁 lastStrongAt。 */
   function baomuKillTurn(s) {
-    s.inserts.push({ t: s.t + 1e-5, done: false, fn: () => {
-      L(s, '保姆', '击杀破晓成员 → 立即额外回合（强化普攻）');
-      baomuStrong(s);
-    } });
+    L(s, '保姆', '击杀破晓成员 → 白送额外回合（纳入强普节奏队列）');
+    s.charge = (s.charge || 0) + CFG.chargeNeed;   // 白送 = 补一格充能
+    drainCharge(s);
   }
 
   /**
@@ -494,6 +510,12 @@ function makeHooks(step, policyObj) {
       const m = s.mobs[k];
       const nm = u ? u.name : (e.name || k);
       if (m.dead) { e.next = Infinity; return; }
+      // 赤焰 @77 次数盾被破 → 停动（降到和灰烬同步，不再单独出手）✅2026-11-22实测
+      if (u && u.shieldBreak != null && !m.shieldBroken && s.t >= u.shieldBreak - 1e-9) {
+        m.shieldBroken = true;
+        L(s, nm, `【次数盾被破】@${s.t.toFixed(0)} → 停动，降到和灰烬同步`);
+        e.next = Infinity; return;
+      }
       if (!m.retreated && (m.cnt || 0) >= 16) {
         m.retreated = true;
         L(s, nm, `【破晓退散】16 计数满 → 解除力场＋掉血＋挂失意（此后承伤 ×${DMG.takenMobRetreat}）`);
@@ -529,6 +551,14 @@ function makeHooks(step, policyObj) {
   /** P2 转阶段：召唤破晓战队 ×4（行动条连续；进场条按 P1 召唤物口径类比，P2 实测 38/76/39 三读） */
   function setupP2(s) {
     const T = s.t;
+    // ⭐P2 强普节奏重置：P1 的充能/排队强普全部作废，P2 从转阶段点重新攒。
+    //   （实战 P2 首两发强化a 在 @89 由杀怪白送触发，之后 127/165 由新充能驱动；P1 旧充能不跨阶段。）
+    s.charge = 0;
+    s.lastStrongAt = -Infinity;
+    s.inserts = s.inserts.filter((x) => x.done || x.kind !== 'baomuStrong');  // 清掉 P1 未执行的排队强普
+    // 实战 @89 转阶段即有 2 发强化a（4层348443/3层348443，杀怪白送）→ 给 2 格启动充能从 T 起节流排 89/127
+    s.charge = 2 * CFG.chargeNeed;
+    drainCharge(s);
     const p2def = {
       p2hui: { name: '灰烬·P2',   spd: 156.25, first: 38, period: 64, hp: DMG.mobHP.hui },
       p2bm:  { name: '保姆·P2',   spd: 144.9,  first: 42, period: 69, hp: DMG.mobHP.cangyi },   // 保姆小怪 HP🟡 暂用苍翼档
@@ -571,7 +601,7 @@ function makeHooks(step, policyObj) {
       s.flags.mobsCleared = true;
       for (const k of ['hui', 'chi']) { if (s.mobs[k]) s.mobs[k].dead = true; s.ents[k].next = Infinity; }
       s.charge = (s.charge || 0) + 320;
-      while (s.charge >= CFG.chargeNeed) { s.charge -= CFG.chargeNeed; s.inserts.push({ t: s.t + 1e-6, done: false, fn: () => baomuStrong(s) }); }
+      drainCharge(s);   // 节流分散
     } });
   }
 }
@@ -605,4 +635,4 @@ const POLICIES = {
 };
 const DEFAULT_POLICY = 'S4_早开_大等力场';  // V4 对账胜出（2026-11-22）
 
-module.exports = { CFG, GREEDY, initState, makeHooks, stats, POLICIES, DEFAULT_POLICY };
+module.exports = { CFG, DMG, GREEDY, initState, makeHooks, stats, POLICIES, DEFAULT_POLICY };
