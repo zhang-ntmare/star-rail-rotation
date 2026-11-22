@@ -41,7 +41,9 @@ const DMG = {
   //   引擎同刻只算 83万/轮 → **欢愉伤害不吃坚不可摧的 −75%**（官方"欢愉伤可更快解除力场"的真义）。
   //   欢愉 1.0 后 334万/轮 ≥ 314.6万 → 1 轮死 ✅ 与实测闭合，且不再需要虚构的"失意 1.3"兜底。
   takenMobFF: 1.0,
-  takenMobRetreat: 1.3,                              // 失意「受到的伤害提高」🟡数值未测（不再承担"1轮死"兜底，仅作退散后加成）
+  // ⭐2026-11-22 去编造：失意「受到的伤害提高」数值未测 → 不臆填加成，取 1.0（原 1.3 是拿"1轮死"反解的虚构兜底）。
+  //   实测 P1 灰烬力场期 1 轮强普即死（314.6万）已由 takenMobFF=1.0 闭合，不需要额外系数。
+  takenMobRetreat: 1.0,
   // 保姆强普真伤（目标 HP 上限×%）：✅ 2026-11-22 实战逐帧读数钉死（旧的 126万反解值作废）。
   //   实测单层系数 ×0.97（−3%/层）：P1 2层292887/1层302118/0层311349；P2 4层348443/1层361497/0层371754
   //   0层真伤 = boss HP上限×1.6%（P1 311349/1935.8万=1.608%；P2 371754/2323万=1.600%，两例交叉验证）
@@ -82,7 +84,12 @@ const CFG = {
   adv: { zhenQBase: 0.30, zhenQE2: 0.30, wind: 0.25 },  // 狼尊Q=行动提前100%（next→now，写死在 cast）
   // th.langQ = 开大门槛；langQCost = 开大消耗（2026-11-22 实测 300→164 消耗136🟡单例，旧 60 作废；
   //   行迹3/专武 +40 在消耗前结算、被 300 顶格吸收，读数上不可见——见 cast langQ 注释）
+  // ⭐2026-11-22 去编造：langQCost 单例反解 136（300→164），实测 P2 另有 76→56=20 —— 两值冲突、规则未定，
+  //   保留 136 仅作对账锚，明标 🟡；禁止当好值传播。旧"固定60消耗"已作废。
   th: { langQ: 60, langQCost: 136, langExtra: 120, yaoQ: 180, zhenQ: 180, huanQ: 160 },
+  // ⭐2026-11-22 去编造：barrierUntil=88 是**实测反填**——力场@86-88解除、P1转阶段锚@89（帧证）。
+  //   真机制=欢愉伤计数满16，参数扫描理论最早@81，但 81 未实测且与 89 锚冲突，**不采用**。
+  //   此值=照打锚，不是"算出来的物理常数"，policy 里所有 s.t<barrierUntil 判断都基于它。
   tough: { bossStart: 470, barrierUntil: 88, ahaStrike: 65, langAhaStrike: 10, langStrong: 50, baomuStrong: 100 },
   chargeNeed: 80,       // 保姆闪充：80 笑点 → 1 发强普（🟡 拟合：1 笑点 = 1 格）
   // ⭐ P2 强普节奏重建（2026-11-22 实战反解）：充能强普不得堆同一格——按保姆自身行动节奏分散。
@@ -572,7 +579,9 @@ function makeHooks(step, policyObj) {
     L(s, '★', `P2 小怪×4 召唤 @${T.toFixed(1)}（首动 T+38/T+42/T+77/T+38🟡）；boss 行动条连续（下一动 @${s.ents.boss.next.toFixed(1)}）`);
   }
 
-  /** 第 3 层机制插入：boss@58 AOE、破晓清场 @112（🟡 时点暂定）。createSim 之后、run 之前调用一次 */
+  /** 第 3 层机制插入：boss@58 AOE、boss@174 P2 AOE。createSim 之后、run 之前调用一次。
+   *  ⭐2026-11-22 删除两处臆造插入：t=81「破晓退散」（时点靠反推）与 t=112「兜底清场」——
+   *    内存对照证明删前后 P1=88.4/阿哈时刻/强普时点全不变，属无实据且无效的代码，见日志。 */
   function stageInserts(s) {
     if (step < 3) return;
     // 帕姆王二动 @58 =【饱和式大扫除！】（一动"值日准备中"原文：下次行动时施放——帧证周期 58 双证）：
@@ -582,26 +591,15 @@ function makeHooks(step, policyObj) {
       core.hit(s, ['lang', 'yao', 'zhen', 'huan'], 'boss@58 饱和式大扫除！（AOE）', CFG.hit);
       gainLaugh(s, CFG.laugh.bossAoe, 'boss技能原文「并使我方获得笑点」');
     } });
-    // 破晓小怪 ×4 被清 → 白送 4 发强普（🟡 时点按 @112 暂定，实测可改）；灰烬/赤焰退场
-    // 兜底：实测（V3.1）@88.4~89 狼两动 3+1 已经把灰烬/赤焰清掉，这里只在"漏杀"时补，避免小怪永远出手。
-    // 旧版把它当主路径（@112 白送 4 强普）已被实测推翻。
-    // 破晓退散标记 @81（🟡时点按 1919 帧"退散后条目同步@1872"证据反推 ≤81）：失意挂身、力场解除——
-    //   伤害账按 takenMobRetreat 记（灰烬 1 轮死由此闭合：663k×(1.3/0.25)=3.45M ≥ 314.6万 ✓）
-    s.inserts.push({ t: 81, done: false, fn: () => {
-      for (const k of Object.keys(s.mobs)) if (!s.mobs[k].dead) { s.mobs[k].retreated = true; L(s, CFG.units[k].name, '【破晓退散】解除力场＋挂失意（伤害账按退散口径）'); }
-    } });
+    // ⭐2026-11-22 去编造：删除 t=81「破晓退散」与 t=112「兜底清场」。
+    //   理由：①t=81 时点靠 1919 帧反推、非实测；且真实退散=计数满16，已在 dealJoy/onTurn 里按 cnt 实现，
+    //         无需定时插入。②t=112 是"旧版主路径被实测推翻"后留的兜底，靠 s.charge+=320 凭空造 4 发强普。
+    //   内存对照（清插入+retreat 1.3→1.0）：P1=88.4/阿哈[64.1,64.1,88.4,128.1,128.1]/强普时点全不变 → 死代码。
+    //   实测清场 @88.4~89 由狼两动 3+1（mobHit）真机制完成，不靠这里。
     // P2 boss AOE @174（实测口径：P2 首动 @116 值日准备中锁弱点 → 下次行动 AOE；周期 58 连续）
     s.inserts.push({ t: 174.0, done: false, fn: () => {
       core.hit(s, ['lang', 'yao', 'zhen', 'huan'], 'boss@174 P2 AOE（泼脏水🟡）', CFG.hit);
       gainLaugh(s, CFG.laugh.bossAoe, 'P2 boss AOE「并使我方获得笑点」');
-    } });
-    s.inserts.push({ t: 112, done: false, fn: () => {
-      if (s.flags.mobsCleared) return;
-      L(s, '保姆', '（兜底）破晓成员清场 → 白送强普');
-      s.flags.mobsCleared = true;
-      for (const k of ['hui', 'chi']) { if (s.mobs[k]) s.mobs[k].dead = true; s.ents[k].next = Infinity; }
-      s.charge = (s.charge || 0) + 320;
-      drainCharge(s);   // 节流分散
     } });
   }
 }
