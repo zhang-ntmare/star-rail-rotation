@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>starRailRotation · 星穹铁道排轴器</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">SR</span>
+      <div>
+        <h1>starRailRotation</h1>
+        <p>星穹铁道排轴器 · 本地版</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <a class="tag tag-link" href="import.html" style="text-decoration:none;">📥 UID 导入面板</a>
+      <span class="tag">v0.2 · 面板导入</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 左：配置 -->
+    <section class="panel config">
+      <div class="panel-head">
+        <h2>队伍配置</h2>
+        <button id="reset-btn" class="btn-ghost" type="button">恢复默认</button>
+      </div>
+      <p class="hint">填写角色速度与初始行动条，器官选择行动偏好，点「开始排轴」生成行动轴。</p>
+
+      <div id="char-list" class="char-list"></div>
+
+      <div class="settings">
+        <h3>全局设置</h3>
+        <div class="settings-grid">
+          <label>模拟步数
+            <input id="steps" type="number" min="4" max="80" value="20">
+          </label>
+          <label>初始战技点
+            <input id="init-sp" type="number" min="0" max="5" value="3">
+          </label>
+          <label>战技点上限
+            <input id="max-sp" type="number" min="1" max="8" value="5">
+          </label>
+        </div>
+      </div>
+
+      <button id="run-btn" class="btn-primary" type="button">开始排轴</button>
+      <p class="tip">提示：速度越高，行动间隔越短。行动条周期 = 10000 / 速度。</p>
+    </section>
+
+    <!-- 右：结果 -->
+    <section class="panel result">
+      <div class="panel-head">
+        <h2>行动轴</h2>
+        <span id="result-meta" class="result-meta">尚未模拟</span>
+      </div>
+
+      <div id="stats" class="stats"></div>
+
+      <div class="table-wrap">
+        <table class="axis-table">
+          <thead>
+            <tr>
+              <th>序</th><th>时刻</th><th>角色</th><th>行动</th><th>SP 变化</th><th>SP 余额</th>
+            </tr>
+          </thead>
+          <tbody id="axis-body">
+            <tr><td colspan="6" class="empty">填写配置后点「开始排轴」</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="legend-wrap">
+        <h3>角色周期</h3>
+        <div id="legend" class="legend"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    数据仅保存在本机浏览器，不上传 · 模型：行动条 10000 / SPD 周期 + 战技点收支
+  </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

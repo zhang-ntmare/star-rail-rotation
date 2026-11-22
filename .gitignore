@@ -1,0 +1,11 @@
+# 视频素材（参考录像，可重下载，不入库——最大 312MB 超 GitHub 100MB 硬限制）
+videos/
+*.mp4
+
+# 工作区本地缓存
+.workbuddy/clipboard-images/
+
+# 凭据文件（绝不入库）
+tools/.douyin_cookies.txt
+tools/.douyin_ttwid.txt
+tools/.douyin_vid.txt

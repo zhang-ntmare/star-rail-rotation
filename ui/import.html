@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面板导入 · starRailRotation</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="import.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">SR</span>
+      <div>
+        <h1>面板导入</h1>
+        <p>UID → 练度面板 · 国服/国际服</p>
+      </div>
+    </div>
+    <a class="tag tag-link" href="index.html">← 返回排轴器</a>
+  </header>
+
+  <!-- 主通道 -->
+  <section class="panel import-panel">
+    <div class="panel-head">
+      <h2>① 主通道 · UID 查询（Mihomo）</h2>
+      <span id="region-badge" class="result-meta">区服：—</span>
+    </div>
+    <p class="hint">
+      输入 UID 拉取游戏内「角色展示」的练度面板，返回已汇总好的最终属性（速度/双暴/攻击等），无需自己组装。
+      国服（1/2/5 开头）与国际服（6/7/8/9 开头）均支持。需在游戏里开启角色展示。
+    </p>
+
+    <div class="uid-row">
+      <input id="uid-input" class="uid-input" type="text" inputmode="numeric" placeholder="例如 110554887" maxlength="10">
+      <button id="fetch-btn" class="btn-primary btn-inline" type="button">拉取面板</button>
+    </div>
+
+    <div class="opts-row">
+      <label class="chk"><input id="via-proxy" type="checkbox"> 经本地代理（直连失败时勾选，需先运行 <code>mys_proxy.py</code>）</label>
+      <span id="fetch-status" class="fetch-status"></span>
+    </div>
+
+    <details class="manual-fold">
+      <summary>直连被浏览器拦截？手动粘贴 API 返回的 JSON</summary>
+      <p class="hint">在新标签页打开 <code id="api-url-hint">https://api.mihomo.me/sr_info_parsed/你的UID?lang=cn</code>，复制全部内容粘到下面，再点解析。</p>
+      <textarea id="manual-json" class="manual-json" placeholder='粘贴 {"player":...,"characters":[...]} 到这里'></textarea>
+      <button id="parse-manual-btn" class="btn-ghost" type="button">解析粘贴的 JSON</button>
+    </details>
+
+    <div id="char-results" class="char-results"></div>
+  </section>
+
+  <!-- 兜底通道 -->
+  <section class="panel import-panel fallback-panel">
+    <div class="panel-head">
+      <h2>② 兜底 · 米游社查自己（本地代理）</h2>
+      <span id="proxy-status" class="result-meta">代理：未检测</span>
+    </div>
+    <p class="hint">
+      查自己 <b>box（拥有的角色/光锥）+ 练度</b>，可看到没放进角色展示的人。需要米游社 Cookie，且必须跑本地代理
+      （浏览器直连会被 CORS 拦 + 缺设备头）。Cookie 只在本机内存转发，不落盘、不上传。
+    </p>
+    <p class="tip warn">
+      注意：米游社接口只给「等级/命座/行迹/光锥」这类养成零件，<b>不给最终战斗面板</b>（攻击/双暴/速度），这部分仍靠上面的 Mihomo 通道。
+    </p>
+
+    <div class="proxy-steps">
+      <div class="step">
+        <span class="step-no">1</span>
+        <div>启动代理：<code>python tools/mys_proxy.py</code></div>
+      </div>
+      <div class="step">
+        <span class="step-no">2</span>
+        <div>从浏览器米游社页面获取 Cookie（F12 → Network → 任意 api-takumi 请求 → 复制 Request Headers 里的 Cookie）</div>
+      </div>
+      <div class="step">
+        <span class="step-no">3</span>
+        <div>粘贴 Cookie，点「查我的角色」。</div>
+      </div>
+    </div>
+
+    <label class="cookie-label">Cookie
+      <textarea id="cookie-input" class="cookie-input" placeholder="粘贴米游社 Cookie 原文"></textarea>
+    </label>
+    <div class="uid-row">
+      <button id="mys-roles-btn" class="btn-ghost btn-inline" type="button">查我的游戏账号</button>
+      <button id="mys-box-btn" class="btn-ghost btn-inline" type="button">查我的角色 box</button>
+    </div>
+    <div id="mys-status" class="fetch-status"></div>
+    <div id="box-results" class="char-results"></div>
+  </section>
+
+  <footer class="footer">
+    数据源：Mihomo API / 米游社官方接口 · 仅用于个人工具，游戏内容版权归 HoYoverse 所有
+  </footer>
+</div>
+<script src="import.js"></script>
+</body>
+</html>

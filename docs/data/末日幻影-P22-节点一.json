@@ -1,0 +1,534 @@
+{
+  "source_authoritative": "hsr-trend.cduyzh.top/season/doom/3022 -> static.nanoka.cc/hsr/4.7.52 (official data-mine)",
+  "source_reference_only": "sr.appfeng.com/challenge/apo (mechanics text only; HP values WRONG - see hp_correction)",
+  "fetched_at": "2026-11-21",
+  "data_version": "4.7.52",
+  "mechanics_detail_doc": "末日幻影-P22-三Boss机制详解.md",
+  "environment_detail_doc": "末日幻影-P22-环境buff与debuff.md",
+  "mechanics_source": "static.nanoka.cc/hsr/4.7.52/zh/monster/{id}.json child[0].skill_list",
+  "environment_source": "static.nanoka.cc/hsr/4.7.52/zh/boss/3022.json buff/buff_list1~3/invasion",
+  "mode": "末日幻影",
+  "cycle": {
+    "no": 22,
+    "name": "领航冥茫",
+    "start": "2026-11-16",
+    "end": "2026-12-28"
+  },
+  "global_mechanic": {
+    "name": "末法余烬",
+    "raw": "拥有【坚防守备】的敌方目标被弱点击破时，使我方全体目标解除控制状态并激活终结技。敌方全体目标受到的战技伤害提高25%，欢愉伤害提高15%。",
+    "param": [
+      0.25,
+      0.15
+    ],
+    "effects": [
+      {
+        "trigger": "break_elite_with_steadfast_guard",
+        "action": "cleanse_all_control + full_activate_all_ultimates"
+      },
+      {
+        "type": "damage_taken_mod",
+        "target": "all_enemies",
+        "skill_dmg_bonus": 0.25,
+        "elation_dmg_bonus": 0.15
+      }
+    ],
+    "score_goals_normal": [
+      4000,
+      5200,
+      6600
+    ],
+    "score_goals_starward": [
+      6000,
+      7800,
+      9900
+    ],
+    "score_goal_starward_special": 10200
+  },
+  "environment_buffs": {
+    "global": {
+      "name": "末法余烬",
+      "break_grants_team_ultimate_cleanse": true,
+      "skill_dmg_taken": 0.25,
+      "elation_dmg_taken": 0.15
+    },
+    "node_selectable_three_choice": {
+      "node1": [
+        {
+          "name": "魔法时间",
+          "effect": "欢愉角色1/2/3/4名→全队欢愉度+10/20/30/60%",
+          "param": [
+            0.1,
+            0.2,
+            0.3,
+            0.6
+          ],
+          "best_for_elation_team": true
+        },
+        {
+          "name": "金钱帝国",
+          "effect": "首位角色放欢愉技增笑20%+获10笑点",
+          "param": [
+            0.2,
+            10
+          ]
+        },
+        {
+          "name": "魔城陷落",
+          "effect": "全队战技和终结技伤+50%, 放终结技获10笑点",
+          "param": [
+            0.5,
+            10
+          ]
+        }
+      ],
+      "node2": [
+        {
+          "name": "攻无不克",
+          "effect": "忆灵伤害无视20%防",
+          "param": [
+            0.2
+          ]
+        },
+        {
+          "name": "生机焕发",
+          "effect": "战技伤+30%; 回合开始HP<=1%时回复生命上限15%",
+          "param": [
+            0.3,
+            0.01,
+            0.15
+          ]
+        },
+        {
+          "name": "破竹之势",
+          "effect": "放终结技时自身击破效率+100%/暴伤+40%持续3回合",
+          "param": [
+            1,
+            0.4,
+            3
+          ]
+        }
+      ],
+      "node3": [
+        {
+          "name": "膏腴之地",
+          "effect": "全队战技终结技伤+30%, 首位额外+30%",
+          "param": [
+            0.3,
+            0.3
+          ]
+        },
+        {
+          "name": "才藻富赡",
+          "effect": "敌方风抗雷抗各-40%",
+          "param": [
+            0.4
+          ]
+        },
+        {
+          "name": "喜上眉梢",
+          "effect": "敌方受欢愉伤+30%; 有欢愉角色→全队击破效率+50%",
+          "param": [
+            0.3,
+            0.5
+          ],
+          "best_for_elation_team": true
+        }
+      ]
+    },
+    "invasion_debuff": {
+      "name": "贪饕污染",
+      "applies_to": [
+        "F3上半",
+        "F4上半(节点一)"
+      ],
+      "raw": "受到致命攻击后不会消灭而是立即回复一定比例生命; 持续造成伤害可压制其生命上限, 压制到一定比例后可彻底消灭",
+      "F4": {
+        "level": 3,
+        "maze_buff_id": 3034003,
+        "maze_buff_param": [
+          0.65,
+          0.3,
+          0.5,
+          1,
+          0.5
+        ],
+        "monster_param": [
+          0.6,
+          0.8,
+          1,
+          3,
+          1.44
+        ]
+      },
+      "engine_critical": "节点一血量归零后插入污染分支(回血→压制上限→达阈值才判胜); 与死龙可负载是两套独立打不死机制"
+    },
+    "binding_maze_buff_id": 3110018,
+    "binding_maze_buff_note": "全关卡共用, 拆包未给文本表, 待核",
+    "three_choice_confirmed": true,
+    "three_choice_evidence": "2026-11-21 头条4.7末日攻略逐队标增益选①/②/③, 与hsr-trend自选文案互证",
+    "pollution_carriers": [
+      {
+        "name": "破晓战队•赤焰",
+        "id": 5013052,
+        "hp_base": 6045,
+        "hp_lv90": 3145675,
+        "param_list": [
+          1,
+          0
+        ]
+      },
+      {
+        "name": "破晓战队•苍翼",
+        "id": 5013042,
+        "hp_base": 5115,
+        "hp_lv90": 2661725,
+        "param_list": []
+      },
+      {
+        "name": "破晓战队•灰烬",
+        "id": 5013072,
+        "hp_base": 6045,
+        "hp_lv90": 3145675,
+        "param_list": [
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "hp_formula": {
+    "source": "hsr-trend methodology; official tables monstervalue.json / HardLevelGroup.json / EliteGroup.json",
+    "single_phase": "HPBase * HardLevelGroup(Level).HPRatio * EliteGroup.HPRatio * child.HPModifyRatio",
+    "total": "single_phase * sum(phase_list[].phase_max_hp_ratio)",
+    "warn": "崩铁助手只算 HPBase*HardLevelGroup*HPModifyRatio, 漏乘 EliteGroup 与 PhaseList => 所有血量低估 4.8~19倍",
+    "hard_level_90_hp_ratio": 236.534716
+  },
+  "stage": {
+    "difficulty": 4,
+    "label": "第四间 / F4",
+    "note": "F4 是最后一关, 内部可切换星启(level 30225)/常规(level 30224)两种模式, 共用3星记录",
+    "enemy_level": 90,
+    "cycle_total_hp_all_phases": 105149141,
+    "normal_mode": {
+      "label": "常规模式",
+      "upper": "含辛茹苦的列车长(帕姆王)",
+      "lower": "枯茎朽骨的引路人(死龙)",
+      "upper_hp_total": 42587598,
+      "lower_hp_total": 59393868
+    },
+    "starward_mode": {
+      "label": "星启模式",
+      "level_id": 30225,
+      "pre_id": 30224,
+      "note": "F4附加关, 三节点独立配队独立计分, 分数合并为F4总分; 共用3星记录",
+      "evidence": "实机截图UID102170426: 节点一3883+节点二3598+节点三3463=10944=F4总分",
+      "structure_evidence": "boss/3022.json: level30224有boss_monster_id1/2(上下半), level30225仅boss_monster_id=302401304(银枝) => 星启新增节点三为银枝, 节点一/二沿用常规F4上/下半",
+      "nodes": [
+        {
+          "index": 1,
+          "boss": "含辛茹苦的列车长(帕姆王)",
+          "monster_id": "501402404",
+          "score_actual": 3883,
+          "hp_single": 19357999,
+          "hp_total": 42587598,
+          "hp_note": "= 常规F4上半; 斩杀线/0T用 hp_total",
+          "in_game_card": "合金机铠·帕姆王: P1 19,357,999 / P2 23,229,599",
+          "in_game_verified": true
+        },
+        {
+          "index": 2,
+          "boss": "枯茎朽骨的引路人(死龙)",
+          "monster_id": "401403604",
+          "score_actual": 3598,
+          "hp_single": 29696934,
+          "hp_total": 59393868,
+          "hp_note": "= 常规F4下半; 实机卡SPD 190",
+          "spd_in_game": 190,
+          "in_game_card": "枯茎朽骨的引路人: HP 29,696,934 x 2 / SPD 190",
+          "in_game_verified": true
+        },
+        {
+          "index": 3,
+          "boss": "银枝(芒寒色正的银骑士)",
+          "monster_id": "302401304",
+          "score_actual": 3463,
+          "hp_single": 13198637,
+          "hp_total": 26397274,
+          "hp_note": "星启新增节点; 实机卡片双管血量已验证",
+          "in_game_card": "芒寒色正的银骑士: HP 13,198,637 x 2",
+          "in_game_verified": true
+        }
+      ]
+    }
+  },
+  "hp_breakdown": {
+    "帕姆王": {
+      "hp_base": 32550,
+      "elite_group": 92,
+      "elite_hp_ratio": 2.2,
+      "hp_modify_ratio": 1.142857,
+      "phase_ratios": [
+        1.0,
+        1.2
+      ],
+      "phase_sum": 2.2,
+      "hp_single": 19357999,
+      "hp_total": 42587598,
+      "appfeng_wrong_value": 8799090,
+      "mechanics": {
+        "weakness": [
+          "physical",
+          "fire",
+          "quantum",
+          "imaginary"
+        ],
+        "resistance": {
+          "ice": 0.6,
+          "thunder": 0.6,
+          "wind": 0.6
+        },
+        "stance": 1200,
+        "spd_base": 134,
+        "spd_lv90": 177,
+        "hit_energy_tiers": {
+          "灵魂修正剪": 10,
+          "无死角洗涤": 10,
+          "强效肥皂泡": 10,
+          "饱和式大扫除": 15
+        },
+        "key_states": [
+          "合金保姆充能(1笑点=1充能,达阈值强化普攻强制削韧)",
+          "长效抗菌(减伤层,全移除boss受伤)",
+          "劳动最快乐!(普攻后真伤+笑点/战技后回SP各1次)",
+          "破晓战队(力场给boss伤害免疫+弱点无效)"
+        ]
+      }
+    },
+    "死龙": {
+      "hp_base": 46500,
+      "elite_group": 97,
+      "elite_hp_ratio": 2.7,
+      "hp_modify_ratio": 1,
+      "phase_ratios": [
+        1.0,
+        1.0
+      ],
+      "phase_sum": 2.0,
+      "hp_single": 29696934,
+      "hp_total": 59393868,
+      "appfeng_wrong_value": 10998864,
+      "mechanics": {
+        "weakness": [
+          "ice",
+          "wind",
+          "quantum",
+          "imaginary"
+        ],
+        "resistance": {
+          "physical": 0.2,
+          "fire": 0.2,
+          "thunder": 0.2
+        },
+        "stance": 2400,
+        "spd_base": 144,
+        "spd_lv90_in_game": 190,
+        "hit_energy_tiers": {
+          "沦殁者攫手挽留": 5,
+          "长眠者厚土安葬": 5,
+          "辞世者临别哀悼": 5
+        },
+        "key_states": [
+          "濒死梦泡(我方掉血积累)",
+          "死亡的芬芳(每回合提速+受击削梦泡回我方血+梦泡尽直接击破)",
+          "可负载(血量最低1点,溢出转负载生命值,治疗优先填负载)",
+          "垂死挣扎(输出削韧降+回合倒计时致命)",
+          "淹没光彩的深渊(boss本体无弱点,击破哀悯长臂→全场共享弱点)",
+          "衰亡伤害(无法被护盾抵消/不可分摊固定伤害)"
+        ],
+        "engine_critical": "动态速度 + 特殊斩杀线(可负载) + 弱点只能经小怪 → 行动条不能用固定SPD, 总血59393868非一击斩杀线"
+      }
+    },
+    "银枝": {
+      "hp_base": 5812.5,
+      "elite_group": 173,
+      "elite_hp_ratio": 9.6,
+      "hp_modify_ratio": 1,
+      "phase_ratios": [
+        1.0,
+        1.0
+      ],
+      "phase_sum": 2.0,
+      "hp_single": 13198637,
+      "hp_total": 26397274,
+      "appfeng_wrong_value": 1374858,
+      "mechanics": {
+        "weakness": [
+          "physical",
+          "fire",
+          "ice",
+          "imaginary"
+        ],
+        "resistance": {
+          "thunder": 0.6,
+          "wind": 0.4,
+          "quantum": 0.4
+        },
+        "stance": 810,
+        "spd_base": 105,
+        "spd_lv90": 139,
+        "hit_energy_tiers": {
+          "虔诚": 15,
+          "渐臻虔诚": 10,
+          "纯美的勇气赞歌": 10,
+          "枪之横扫": 40
+        },
+        "key_states": [
+          "战斗姿态三形态(骑士之怒减伤+韧性保护/黄金奉还增伤/瑰丽之勋不可选中)",
+          "灵魂释放(雕塑被杀→我方增伤;被回收→boss增伤)",
+          "破竹之势(破韧后行动延后+受伤提高+我方全体回SP并激活终结技)",
+          "众星拱卫(敌方每多1单位,敌全体受伤降低伤害提高)",
+          "盾之奉还(按对位目标动态调整自身弱点)"
+        ],
+        "engine_critical": "破竹之势与全局末法余烬击破奖励叠加; 姿态切换改可选中性/乘区; 弱点动态变化"
+      }
+    }
+  },
+  "hp_correction": {
+    "date": "2026-11-21",
+    "old_belief": "崩铁助手 8799090 / 10998864 / 1374858 是真实血量, 反复在存疑/可信间横跳",
+    "truth": "这三个数只乘了 HPBase*等级乘区(*HPModify), 漏乘 EliteGroup(2.2/2.7/9.6) 与 PhaseList(2.2/2.0/2.0)",
+    "verification": "hsr-trend 页面 SSR HTML 逐字含 19,357,999 / 29,696,934 / 13,198,637 / 26,397,274 / 59,393,868 / 105,149,141",
+    "in_game_final_verified": true,
+    "in_game_evidence": "大人实机截图(2026-11-21): 帕姆王卡'P1 19,357,999 / P2 23,229,599'; 死龙卡'HP 29,696,934 x 2' + SPD 190; 银枝卡'HP 13,198,637 x 2' —— 三只逐位吻合拆包计算, 血量闭环",
+    "in_game_proves": [
+      "x2/P1P2 是双阶段两管血的实机显示口径, 证明必乘阶段倍率之和",
+      "帕姆王 P2=P1x1.2 坐实 phase2 倍率1.2(区别于死龙/银枝的1.0)",
+      "崩铁助手值被彻底证伪"
+    ],
+    "lesson": "多源验证先查是否同源同算法; 多阶段Boss必须按PhaseList倍率之和; 拆包参数要按公式链完整乘算; 实机截图是终裁"
+  },
+  "node1_boss": {
+    "name": "含辛茹苦的列车长",
+    "alias": "合金机铠·帕姆王 / 帕姆王",
+    "monster_id": "5014024",
+    "instance_id": "501402404",
+    "type": "幻造种·小BOSS",
+    "weakness": [
+      "physical",
+      "fire",
+      "quantum",
+      "imaginary"
+    ],
+    "resistance": {
+      "ice": 0.6,
+      "thunder": 0.6,
+      "wind": 0.6
+    },
+    "stats_lv90": {
+      "hp_base": 32550,
+      "hp_level_coef": 236.534716,
+      "hp_catalog_single": 7699052,
+      "hp_single_actual": 19357999,
+      "hp_total_actual": 42587598,
+      "atk": 663,
+      "def": 1100,
+      "spd": 177,
+      "toughness": 1200,
+      "crit_dmg": 0.2,
+      "effect_res": 0.3,
+      "status_res": 0.5
+    },
+    "skills_phase1": [
+      {
+        "name": "灵魂修正剪",
+        "type": "single",
+        "element": "quantum"
+      },
+      {
+        "name": "高温消毒模式",
+        "type": "empower",
+        "element": "quantum",
+        "note": "蒸汽洗涤: 自身伤害提高+长效抗菌减伤层; 全移除时退出并受大量伤害"
+      },
+      {
+        "name": "无死角洗涤",
+        "type": "aoe",
+        "element": "quantum",
+        "grants_punchline": true
+      },
+      {
+        "name": "洗地机之乱",
+        "type": "talent",
+        "element": "quantum",
+        "note": "每笑点→alloy_nanny charge +1; 达80施放强化普攻: 移除1层长效抗菌+无视弱点无效强制削韧; 保姆最多1个不被选中"
+      },
+      {
+        "name": "创新漂白液",
+        "type": "talent",
+        "element": "quantum",
+        "note": "破晓战队处于破晓力场时 boss 获同属性伤害免疫+弱点无效; 击杀破晓战队成员→保姆获额外回合"
+      }
+    ],
+    "skills_phase2_extra": [
+      {
+        "name": "强效肥皂泡",
+        "type": "aoe",
+        "element": "quantum",
+        "grants_punchline": true
+      },
+      {
+        "name": "值日准备中…",
+        "type": "charge",
+        "element": "quantum",
+        "note": "摩拳擦掌+弱点无效, 下次行动施放饱和式大扫除"
+      },
+      {
+        "name": "饱和式大扫除！",
+        "type": "aoe",
+        "element": "quantum",
+        "grants_punchline": true
+      }
+    ],
+    "mechanics_for_engine": [
+      "alloy_nanny_charge: 1 punchline -> +1 charge, at 80 -> enhanced basic (remove 1 antibacterial layer + forced toughness reduction ignoring weakness-lock)",
+      "dawn_squad_shield: 16-hit-count shield (guide source, unverified in data-mine)",
+      "long_last_antibacterial: damage-reduction stacks, remove all -> boss takes burst damage",
+      "charge_skill: delay-release next action",
+      "two_phases: phase1 ratio 1.0, phase2 ratio 1.2, damage cumulative across phases"
+    ]
+  },
+  "fit_for_elation_team": {
+    "global_buffs": {
+      "skill_dmg": 0.25,
+      "elation_dmg": 0.15
+    },
+    "reason": "我方产笑点→保姆充能→破长效抗菌与韧性→击破触发全队开大; 弱点含虚数/火/物理适配基准队",
+    "caveat": "非弱点冰/雷/风抗性60%, 必须按弱点配队",
+    "stress_note": "真实总血4258万, 旧值879万会让斩杀线判定失真4.8倍"
+  },
+  "open_questions": [
+    "破晓战队小怪精确属性/血量(次数盾已实测: 退散计数=x/16, 普通+1/欢愉+2/保姆强普+1; 160/160是锁死的韧性条非计数)",
+    "各技能受击回能档位逐条归类(帕姆王轻击=10基础已实测)",
+    "✅合金保姆强化普攻削韧=100实测(2026-11-22 boss韧条455/480→355/480); 长效抗菌2层(P1)/4层(P2)",
+    "✅阶段切换=血打空后等当前行动段结束才切(2026-11-22实测); ⚠️转阶段狼尊额外回合疑似被吞(实测+社区同报), 排轴开大链不跨转阶段",
+    "✅合金保姆充能阈值终裁=80——2026-11-22实机官方技能文本(洗地机之乱天赋原文'充能值能达到80')坐实, BWIKI的20废止",
+    "✅坚防守备挂首领(帕姆王幻影,核心特性)——2026-11-22实机首领特性页签确认: 受伤-50%/破韧后行动额外延后+受伤+100%",
+    "✅污染等级3只挂破晓小怪(boss图标行无污染,自动档实录帧读+小怪详情页坐实)——帕姆王不吃贪饕回血",
+    "✅末法余烬激活=免能量+开完归0+常驻到施放+狼尊吃(按60隐藏分档), 2026-11-22九连测",
+    "✅狼尊2魂'含初始'=进场保底1档(非floor(初始/120)): 实测点火X=180开大→2魂1额外回合+真珠1; 无敌玩家期间每+120再+1档🟡细节待补",
+    "敌方出招顺序无任何权威轮转表(拆包/BWIKI/攻略均无), 需实机录像逐帧; 排轴前按状态机+蓄力锚点近似"
+  ],
+  "official_in_game_verification": {
+    "date": "2026-11-22",
+    "source": "大人实机敌方详情截图(技能P1/P2页+挑战策略+首领特性四条tooltip)",
+    "confirmations": [
+      "P1技能池: 灵魂修正剪/无死角洗涤/高温消毒模式/洗地机之乱/创新漂白液; P2追加: 饱和式大清扫!/强效肥皂泡/值日准备中(蓄力,摩拳擦掌+弱点无效)",
+      "洗地机之乱官方原文: 我方每获得1个笑点→合金保姆积累1点充能, 充能达80→强化普攻: 移除1层长效抗菌+无视弱点无效强制削减韧性; 保姆最多1个不被选中",
+      "挑战策略: 保姆强化普攻解除首领伤害减免+削减首领韧性; 欢愉伤害使破晓战队更快退出力场; 消灭任意破晓成员→保姆立即+1强化普攻额外回合",
+      "首领特性: 坚防守备(核心)=受伤-50%/破韧后行动额外延后+受伤+100%; 至臻友情=力场期间首领获与该成员同属性伤害免疫+弱点无效; 不动如山=退出力场所需攻击次数提高; 坚不可摧=力场中小怪受伤大幅降低",
+      "如何解除伤害免疫(官方攻略提示): 造成欢愉伤害可更快解除破晓力场和首领伤害免疫"
+    ]
+  },
+  "readiness_doc": "末日幻影-P22-排轴就绪度评估.md"
+}
